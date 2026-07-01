@@ -741,7 +741,8 @@ function openMeigiModal(id, preGroup, preMember) {
     var el = document.getElementById('meigi-'+f);
     if(el) el.value = '';
   });
-  document.getElementById('meigi-group').value  = g;
+  var grpEl = document.getElementById('meigi-group');
+  if(grpEl) grpEl.value = g;
   document.getElementById('meigi-member').value = preMember || '';
   document.getElementById('member-datalist').innerHTML = getMembersForGroup(g).map(function(mb){return '<option value="'+esc(mb)+'">';}).join('');
 
@@ -757,7 +758,7 @@ function openMeigiModal(id, preGroup, preMember) {
     if (!m) return;
     document.getElementById('meigi-id').value         = m.id           || '';
     document.getElementById('meigi-name').value       = m.name         || '';
-    document.getElementById('meigi-group').value      = m.group        || '';
+    if(grpEl) grpEl.value = m.group || '';
     document.getElementById('meigi-member').value     = m.member       || '';
     document.getElementById('meigi-number').value     = padNum(m.number) || '';
     document.getElementById('meigi-password').value   = m.password     || '';
