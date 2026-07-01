@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FC名義管理</title>
+<style>
+  :root {
+    --primary: #c8a2c8;
+    --primary-dark: #9b72b0;
+    --danger: #e05c5c;
+    --warning: #e8a840;
+    --success: #5caa7a;
+    --bg: #faf8fc;
+    --card: #fff;
+    --border: #e8e0ee;
+    --text: #333;
+    --muted: #888;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ナビ */
+  nav { background: var(--primary-dark); color: #fff; display: flex; gap: 0; overflow-x: auto; }
+  nav button { background: none; border: none; color: #fff; padding: 14px 20px; cursor: pointer; white-space: nowrap; font-size: 14px; border-bottom: 3px solid transparent; transition: background 0.15s; }
+  nav button:hover { background: rgba(255,255,255,0.15); }
+  nav button.active { border-bottom-color: #fff; background: rgba(255,255,255,0.1); }
+
+  /* ページ */
+  .page { display: none; padding: 20px; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  h2 { font-size: 18px; margin-bottom: 16px; color: var(--primary-dark); }
+  h3 { font-size: 15px; margin-bottom: 10px; }
+
+  /* カード */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+
+  /* バッジ */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+  .badge-danger { background: #fde8e8; color: var(--danger); }
+  .badge-warning { background: #fef3e2; color: var(--warning); }
+  .badge-success { background: #e6f4ed; color: var(--success); }
+  .badge-gray { background: #eee; color: var(--muted); }
+
+  /* フォーム */
+  .form-group { margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; background: var(--bg); }
+  textarea { resize: vertical; height: 60px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  /* ボタン */
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; font-family: inherit; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--primary-dark); color: #fff; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-outline { background: none; border: 1px solid var(--border); }
+  .btn-bar { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* アラート */
+  .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; }
+  .alert-warning { background: #fef3e2; border-left: 4px solid var(--warning); }
+  .alert-danger { background: #fde8e8; border-left: 4px solid var(--danger); }
+
+  /* テーブル */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; color: var(--muted); font-weight: normal; }
+  tr:hover td { background: #faf0ff; }
+
+  /* モーダル */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin-bottom: 16px; color: var(--primary-dark); }
+
+  /* ダッシュボード */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .stat-num { font-size: 28px; font-weight: bold; color: var(--primary-dark); }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* 空状態 */
+  .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+
+  /* ツールバー */
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+
+  /* 座席表示 */
+  .seat-info { font-size: 13px; color: var(--muted); }
+  .seat-info span { color: var(--text); font-weight: bold; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="active" onclick="showPage('dashboard')">ダッシュボード</button>
+  <button onclick="showPage('meigi')">名義管理</button>
+  <button onclick="showPage('venue')">会場管理</button>
+  <button onclick="showPage('lottery')">抽選記録</button>
+</nav>
+
+<!-- ダッシュボード -->
+<div id="page-dashboard" class="page active">
+  <h2>ダッシュボード</h2>
+  <div class="stats" id="stats"></div>
+  <div id="renewal-alerts"></div>
+  <div id="recent-lottery"></div>
+</div>
+
+<!-- 名義管理 -->
+<div id="page-meigi" class="page">
+  <div class="toolbar">
+    <h2 style="margin:0">名義管理</h2>
+    <button class="btn btn-primary" onclick="openMeigiModal()">＋ 名義を追加</button>
+  </div>
+  <div id="meigi-list"></div>
+</div>
+
+<!-- 会場管理 -->
+<div id="page-venue" class="page">
+  <div class="toolbar">
+    <h2 style="margin:0">会場管理</h2>
+    <button class="btn btn-primary" onclick="openVenueModal()">＋ 会場を追加</button>
+  </div>
+  <div id="venue-list"></div>
+</div>
+
+<!-- 抽選記録 -->
+<div id="page-lottery" class="page">
+  <div class="toolbar">
+    <h2 style="margin:0">抽選記録</h2>
+    <button class="btn btn-primary" onclick="openLotteryModal()">＋ 記録を追加</button>
+  </div>
+  <div id="lottery-filters" style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
+    <select id="filter-meigi" onchange="renderLottery()" style="width:auto; min-width:120px;">
+      <option value="">名義：すべて</option>
+    </select>
+    <select id="filter-result" onchange="renderLottery()" style="width:auto; min-width:120px;">
+      <option value="">結果：すべて</option>
+      <option value="当選">当選</option>
+      <option value="落選">落選</option>
+      <option value="補欠">補欠</option>
+    </select>
+  </div>
+  <div id="lottery-list"></div>
+</div>
+
+<!-- モーダル：名義 -->
+<div class="modal-overlay" id="modal-meigi">
+  <div class="modal">
+    <h3 id="meigi-modal-title">名義を追加</h3>
+    <input type="hidden" id="meigi-id">
+    <div class="form-group">
+      <label>名前（名義名）</label>
+      <input type="text" id="meigi-name" placeholder="例：田中さや子">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>会員番号</label>
+        <input type="text" id="meigi-number" placeholder="例：FC0012345">
+      </div>
+      <div class="form-group">
+        <label>担当グループ</label>
+        <input type="text" id="meigi-group" placeholder="例：SixTONES">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>年会費更新日</label>
+        <input type="date" id="meigi-renewal">
+      </div>
+      <div class="form-group">
+        <label>年会費（円）</label>
+        <input type="number" id="meigi-fee" placeholder="例：5500">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>メモ</label>
+      <textarea id="meigi-note" placeholder="備考など"></textarea>
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="saveMeigi()">保存</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-meigi')">キャンセル</button>
+      <button class="btn btn-danger btn-sm" id="meigi-delete-btn" onclick="deleteMeigi()" style="margin-left:auto; display:none;">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：会場 -->
+<div class="modal-overlay" id="modal-venue">
+  <div class="modal">
+    <h3 id="venue-modal-title">会場を追加</h3>
+    <input type="hidden" id="venue-id">
+    <div class="form-group">
+      <label>会場名</label>
+      <input type="text" id="venue-name" placeholder="例：東京ドーム">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>都道府県</label>
+        <input type="text" id="venue-pref" placeholder="例：東京都">
+      </div>
+      <div class="form-group">
+        <label>収容人数（任意）</label>
+        <input type="number" id="venue-cap" placeholder="例：55000">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>メモ</label>
+      <textarea id="venue-note" placeholder="ブロック構成・アクセスなど"></textarea>
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="saveVenue()">保存</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-venue')">キャンセル</button>
+      <button class="btn btn-danger btn-sm" id="venue-delete-btn" onclick="deleteVenue()" style="margin-left:auto; display:none;">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル：抽選記録 -->
+<div class="modal-overlay" id="modal-lottery">
+  <div class="modal">
+    <h3 id="lottery-modal-title">抽選記録を追加</h3>
+    <input type="hidden" id="lottery-id">
+    <div class="form-group">
+      <label>公演名</label>
+      <input type="text" id="lottery-concert" placeholder="例：LIVE TOUR 2025 Summer">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>応募した名義</label>
+        <select id="lottery-meigi"></select>
+      </div>
+      <div class="form-group">
+        <label>会場</label>
+        <select id="lottery-venue"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>公演日</label>
+        <input type="date" id="lottery-date">
+      </div>
+      <div class="form-group">
+        <label>結果</label>
+        <select id="lottery-result" onchange="toggleSeatFields()">
+          <option value="当選">当選</option>
+          <option value="落選">落選</option>
+          <option value="補欠">補欠</option>
+          <option value="未定">未定（抽選待ち）</option>
+        </select>
+      </div>
+    </div>
+    <!-- 座席情報（当選時のみ表示） -->
+    <div id="seat-fields">
+      <h3 style="margin-top:8px;">座席情報</h3>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>ブロック / スタンド</label>
+          <input type="text" id="seat-block" placeholder="例：1塁アリーナA">
+        </div>
+        <div class="form-group">
+          <label>列</label>
+          <input type="text" id="seat-row" placeholder="例：12列">
+        </div>
+        <div class="form-group">
+          <label>番号</label>
+          <input type="text" id="seat-num" placeholder="例：25番">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>座席メモ（見え方・花道との距離など）</label>
+        <textarea id="seat-note" placeholder="例：花道横、ステージ全体が見やすかった"></textarea>
+      </div>
+    </div>
+    <div class="btn-bar">
+      <button class="btn btn-primary" onclick="saveLottery()">保存</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-lottery')">キャンセル</button>
+      <button class="btn btn-danger btn-sm" id="lottery-delete-btn" onclick="deleteLottery()" style="margin-left:auto; display:none;">削除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== データ管理 ==========
+const DB = {
+  get: (key) => JSON.parse(localStorage.getItem(key) || '[]'),
+  set: (key, val) => localStorage.setItem(key, JSON.stringify(val)),
+};
+
+const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+// ========== ナビ ==========
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'meigi') renderMeigi();
+  if (name === 'venue') renderVenue();
+  if (name === 'lottery') renderLottery();
+}
+
+// ========== モーダル ==========
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ========== ダッシュボード ==========
+function renderDashboard() {
+  const meigiList = DB.get('meigi');
+  const lotteryList = DB.get('lottery');
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // 統計
+  const wins = lotteryList.filter(l => l.result === '当選').length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${meigiList.length}</div><div class="stat-label">名義数</div></div>
+    <div class="stat-card"><div class="stat-num">${lotteryList.length}</div><div class="stat-label">抽選記録</div></div>
+    <div class="stat-card"><div class="stat-num">${wins}</div><div class="stat-label">当選数</div></div>
+    <div class="stat-card"><div class="stat-num">${lotteryList.length ? Math.round(wins/lotteryList.length*100) : 0}%</div><div class="stat-label">当選率</div></div>
+  `;
+
+  // 更新日アラート
+  const alerts = meigiList.filter(m => {
+    if (!m.renewal) return false;
+    const d = new Date(m.renewal); d.setHours(0,0,0,0);
+    return (d - today) / 86400000 <= 60;
+  }).sort((a,b) => new Date(a.renewal) - new Date(b.renewal));
+
+  document.getElementById('renewal-alerts').innerHTML = alerts.length
+    ? `<h3 style="margin-bottom:8px;">更新が近い名義</h3>` + alerts.map(m => {
+        const d = new Date(m.renewal); d.setHours(0,0,0,0);
+        const diff = Math.round((d - today) / 86400000);
+        const cls = diff < 0 ? 'alert-danger' : 'alert-warning';
+        const label = diff < 0 ? `${-diff}日超過` : diff === 0 ? '本日' : `あと${diff}日`;
+        return `<div class="alert ${cls}">
+          <strong>${m.name}</strong>（${m.group || '—'}）
+          　更新日：${m.renewal}　<span class="badge ${diff<0?'badge-danger':'badge-warning'}">${label}</span>
+          ${m.fee ? `　年会費：${Number(m.fee).toLocaleString()}円` : ''}
+        </div>`;
+      }).join('')
+    : '';
+
+  // 最近の抽選記録（直近5件）
+  const recent = [...lotteryList].sort((a,b) => (b.date||'') > (a.date||'') ? 1 : -1).slice(0,5);
+  document.getElementById('recent-lottery').innerHTML = recent.length
+    ? `<h3 style="margin: 16px 0 8px;">最近の抽選記録</h3>
+       <div class="card" style="padding:0;overflow:hidden;">
+       <table><thead><tr><th>公演</th><th>名義</th><th>会場</th><th>日程</th><th>結果</th></tr></thead><tbody>
+       ${recent.map(l => `<tr>
+         <td>${l.concert}</td><td>${l.meigiName||'—'}</td>
+         <td>${l.venueName||'—'}</td><td>${l.date||'—'}</td>
+         <td>${resultBadge(l.result)}</td>
+       </tr>`).join('')}
+       </tbody></table></div>`
+    : '';
+}
+
+function resultBadge(r) {
+  const map = { '当選':'badge-success', '落選':'badge-danger', '補欠':'badge-warning', '未定':'badge-gray' };
+  return `<span class="badge ${map[r]||'badge-gray'}">${r}</span>`;
+}
+
+// ========== 名義管理 ==========
+function renderMeigi() {
+  const list = DB.get('meigi');
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (!list.length) {
+    document.getElementById('meigi-list').innerHTML = '<div class="empty">名義がまだありません</div>';
+    return;
+  }
+  document.getElementById('meigi-list').innerHTML = list.map(m => {
+    let badge = '';
+    if (m.renewal) {
+      const d = new Date(m.renewal); d.setHours(0,0,0,0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff < 0) badge = `<span class="badge badge-danger">更新超過</span>`;
+      else if (diff <= 30) badge = `<span class="badge badge-warning">あと${diff}日</span>`;
+      else if (diff <= 60) badge = `<span class="badge badge-warning">あと${diff}日</span>`;
+    }
+    return `<div class="card" style="cursor:pointer" onclick="openMeigiModal('${m.id}')">
+      <div style="display:flex; justify-content:space-between; align-items:start;">
+        <div>
+          <strong style="font-size:15px;">${m.name}</strong>
+          ${m.group ? `<span style="color:var(--muted);margin-left:8px;">${m.group}</span>` : ''}
+          ${badge ? `<span style="margin-left:8px;">${badge}</span>` : ''}
+        </div>
+      </div>
+      <div style="margin-top:6px; color:var(--muted); font-size:13px;">
+        ${m.number ? `会員番号：${m.number}　` : ''}
+        ${m.renewal ? `更新日：${m.renewal}` : ''}
+        ${m.fee ? `　年会費：${Number(m.fee).toLocaleString()}円` : ''}
+      </div>
+      ${m.note ? `<div style="margin-top:6px; font-size:13px; color:#666;">${m.note}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openMeigiModal(id) {
+  const fields = ['id','name','number','group','renewal','fee','note'];
+  fields.forEach(f => document.getElementById('meigi-'+f).value = '');
+  document.getElementById('meigi-modal-title').textContent = '名義を追加';
+  document.getElementById('meigi-delete-btn').style.display = 'none';
+
+  if (id) {
+    const m = DB.get('meigi').find(x => x.id === id);
+    if (!m) return;
+    fields.forEach(f => document.getElementById('meigi-'+f).value = m[f] || '');
+    document.getElementById('meigi-modal-title').textContent = '名義を編集';
+    document.getElementById('meigi-delete-btn').style.display = '';
+  }
+  openModal('modal-meigi');
+}
+
+function saveMeigi() {
+  const id = document.getElementById('meigi-id').value;
+  const name = document.getElementById('meigi-name').value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  const obj = {
+    id: id || uuid(), name,
+    number: document.getElementById('meigi-number').value.trim(),
+    group: document.getElementById('meigi-group').value.trim(),
+    renewal: document.getElementById('meigi-renewal').value,
+    fee: document.getElementById('meigi-fee').value,
+    note: document.getElementById('meigi-note').value.trim(),
+  };
+  const list = DB.get('meigi');
+  const idx = list.findIndex(x => x.id === obj.id);
+  if (idx >= 0) list[idx] = obj; else list.push(obj);
+  DB.set('meigi', list);
+  closeModal('modal-meigi');
+  renderMeigi();
+}
+
+function deleteMeigi() {
+  if (!confirm('この名義を削除しますか？')) return;
+  const id = document.getElementById('meigi-id').value;
+  DB.set('meigi', DB.get('meigi').filter(x => x.id !== id));
+  closeModal('modal-meigi');
+  renderMeigi();
+}
+
+// ========== 会場管理 ==========
+function renderVenue() {
+  const list = DB.get('venue');
+  if (!list.length) {
+    document.getElementById('venue-list').innerHTML = '<div class="empty">会場がまだありません</div>';
+    return;
+  }
+  document.getElementById('venue-list').innerHTML = `
+    <div class="card" style="padding:0;overflow:hidden;">
+    <table><thead><tr><th>会場名</th><th>都道府県</th><th>収容人数</th><th>メモ</th></tr></thead><tbody>
+    ${list.map(v => `<tr style="cursor:pointer" onclick="openVenueModal('${v.id}')">
+      <td><strong>${v.name}</strong></td>
+      <td>${v.pref||'—'}</td>
+      <td>${v.cap ? Number(v.cap).toLocaleString()+'人' : '—'}</td>
+      <td style="color:var(--muted);font-size:13px;">${v.note||'—'}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function openVenueModal(id) {
+  ['id','name','pref','cap','note'].forEach(f => document.getElementById('venue-'+f).value = '');
+  document.getElementById('venue-modal-title').textContent = '会場を追加';
+  document.getElementById('venue-delete-btn').style.display = 'none';
+
+  if (id) {
+    const v = DB.get('venue').find(x => x.id === id);
+    if (!v) return;
+    ['id','name','pref','cap','note'].forEach(f => document.getElementById('venue-'+f).value = v[f]||'');
+    document.getElementById('venue-modal-title').textContent = '会場を編集';
+    document.getElementById('venue-delete-btn').style.display = '';
+  }
+  openModal('modal-venue');
+}
+
+function saveVenue() {
+  const name = document.getElementById('venue-name').value.trim();
+  if (!name) { alert('会場名を入力してください'); return; }
+  const id = document.getElementById('venue-id').value;
+  const obj = {
+    id: id || uuid(), name,
+    pref: document.getElementById('venue-pref').value.trim(),
+    cap: document.getElementById('venue-cap').value,
+    note: document.getElementById('venue-note').value.trim(),
+  };
+  const list = DB.get('venue');
+  const idx = list.findIndex(x => x.id === obj.id);
+  if (idx >= 0) list[idx] = obj; else list.push(obj);
+  DB.set('venue', list);
+  closeModal('modal-venue');
+  renderVenue();
+}
+
+function deleteVenue() {
+  if (!confirm('この会場を削除しますか？')) return;
+  const id = document.getElementById('venue-id').value;
+  DB.set('venue', DB.get('venue').filter(x => x.id !== id));
+  closeModal('modal-venue');
+  renderVenue();
+}
+
+// ========== 抽選記録 ==========
+function populateLotterySelects() {
+  const meigiList = DB.get('meigi');
+  const venueList = DB.get('venue');
+
+  const ms = document.getElementById('lottery-meigi');
+  ms.innerHTML = meigiList.length
+    ? meigiList.map(m => `<option value="${m.id}">${m.name}（${m.group||'—'}）</option>`).join('')
+    : '<option value="">（名義を先に登録してください）</option>';
+
+  const vs = document.getElementById('lottery-venue');
+  vs.innerHTML = '<option value="">未定</option>' +
+    venueList.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+
+  // フィルター用
+  const fm = document.getElementById('filter-meigi');
+  const cur = fm.value;
+  fm.innerHTML = '<option value="">名義：すべて</option>' +
+    meigiList.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  fm.value = cur;
+}
+
+function toggleSeatFields() {
+  const r = document.getElementById('lottery-result').value;
+  document.getElementById('seat-fields').style.display = r === '当選' ? '' : 'none';
+}
+
+function renderLottery() {
+  populateLotterySelects();
+  let list = DB.get('lottery');
+  const fm = document.getElementById('filter-meigi').value;
+  const fr = document.getElementById('filter-result').value;
+  if (fm) list = list.filter(l => l.meigiId === fm);
+  if (fr) list = list.filter(l => l.result === fr);
+  list.sort((a,b) => (b.date||'') > (a.date||'') ? 1 : -1);
+
+  if (!list.length) {
+    document.getElementById('lottery-list').innerHTML = '<div class="empty">記録がありません</div>';
+    return;
+  }
+  document.getElementById('lottery-list').innerHTML = list.map(l => `
+    <div class="card" style="cursor:pointer" onclick="openLotteryModal('${l.id}')">
+      <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:6px;">
+        <div>
+          <strong style="font-size:15px;">${l.concert}</strong>
+          　${resultBadge(l.result)}
+        </div>
+        <div style="font-size:13px; color:var(--muted);">${l.date||'日程未定'}</div>
+      </div>
+      <div style="margin-top:6px; font-size:13px; color:var(--muted);">
+        名義：<span style="color:var(--text)">${l.meigiName||'—'}</span>
+        　会場：<span style="color:var(--text)">${l.venueName||'—'}</span>
+      </div>
+      ${l.result === '当選' ? `<div style="margin-top:6px;" class="seat-info">
+        座席：<span>${[l.seatBlock, l.seatRow, l.seatNum].filter(Boolean).join(' / ') || '未記入'}</span>
+        ${l.seatNote ? `　<span style="color:var(--muted)">（${l.seatNote}）</span>` : ''}
+      </div>` : ''}
+    </div>`).join('');
+}
+
+function openLotteryModal(id) {
+  populateLotterySelects();
+  ['id','concert','date','seatBlock','seatRow','seatNum','seatNote'].forEach(f => {
+    const el = document.getElementById('lottery-'+f) || document.getElementById('seat-'+f.replace('seat','').toLowerCase());
+    if (el) el.value = '';
+  });
+  document.getElementById('lottery-concert').value = '';
+  document.getElementById('lottery-date').value = '';
+  document.getElementById('seat-block').value = '';
+  document.getElementById('seat-row').value = '';
+  document.getElementById('seat-num').value = '';
+  document.getElementById('seat-note').value = '';
+  document.getElementById('lottery-result').value = '未定';
+  document.getElementById('lottery-modal-title').textContent = '抽選記録を追加';
+  document.getElementById('lottery-delete-btn').style.display = 'none';
+  toggleSeatFields();
+
+  if (id) {
+    const l = DB.get('lottery').find(x => x.id === id);
+    if (!l) return;
+    document.getElementById('lottery-id').value = l.id;
+    document.getElementById('lottery-concert').value = l.concert || '';
+    document.getElementById('lottery-meigi').value = l.meigiId || '';
+    document.getElementById('lottery-venue').value = l.venueId || '';
+    document.getElementById('lottery-date').value = l.date || '';
+    document.getElementById('lottery-result').value = l.result || '未定';
+    document.getElementById('seat-block').value = l.seatBlock || '';
+    document.getElementById('seat-row').value = l.seatRow || '';
+    document.getElementById('seat-num').value = l.seatNum || '';
+    document.getElementById('seat-note').value = l.seatNote || '';
+    document.getElementById('lottery-modal-title').textContent = '抽選記録を編集';
+    document.getElementById('lottery-delete-btn').style.display = '';
+    toggleSeatFields();
+  }
+  openModal('modal-lottery');
+}
+
+function saveLottery() {
+  const concert = document.getElementById('lottery-concert').value.trim();
+  if (!concert) { alert('公演名を入力してください'); return; }
+
+  const meigiId = document.getElementById('lottery-meigi').value;
+  const venueId = document.getElementById('lottery-venue').value;
+  const meigiList = DB.get('meigi');
+  const venueList = DB.get('venue');
+  const meigi = meigiList.find(m => m.id === meigiId);
+  const venue = venueList.find(v => v.id === venueId);
+
+  const id = document.getElementById('lottery-id').value;
+  const result = document.getElementById('lottery-result').value;
+  const obj = {
+    id: id || uuid(), concert,
+    meigiId, meigiName: meigi ? meigi.name : '',
+    venueId, venueName: venue ? venue.name : '',
+    date: document.getElementById('lottery-date').value,
+    result,
+    seatBlock: result === '当選' ? document.getElementById('seat-block').value.trim() : '',
+    seatRow: result === '当選' ? document.getElementById('seat-row').value.trim() : '',
+    seatNum: result === '当選' ? document.getElementById('seat-num').value.trim() : '',
+    seatNote: result === '当選' ? document.getElementById('seat-note').value.trim() : '',
+  };
+  const list = DB.get('lottery');
+  const idx = list.findIndex(x => x.id === obj.id);
+  if (idx >= 0) list[idx] = obj; else list.push(obj);
+  DB.set('lottery', list);
+  closeModal('modal-lottery');
+  renderLottery();
+}
+
+function deleteLottery() {
+  if (!confirm('この記録を削除しますか？')) return;
+  const id = document.getElementById('lottery-id').value;
+  DB.set('lottery', DB.get('lottery').filter(x => x.id !== id));
+  closeModal('modal-lottery');
+  renderLottery();
+}
+
+// ========== 初期化 ==========
+renderDashboard();
+</script>
+</body>
+</html>
