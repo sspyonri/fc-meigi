@@ -135,6 +135,7 @@ input:focus,select:focus,textarea:focus { outline:none;border-color:var(--primar
 <nav>
   <button id="nav-dashboard" class="active" onclick="showPage('dashboard',this)">ダッシュボード</button>
   <button id="nav-meigi"     onclick="showPage('meigi',this)">名義管理</button>
+  <button id="nav-buyqr"     onclick="showPage('buyqr',this)">買いQR</button>
   <button id="nav-venue"     onclick="showPage('venue',this)">会場管理</button>
   <button style="margin-left:auto;" onclick="openDataModal()">⚙ データ</button>
 </nav>
@@ -169,6 +170,12 @@ input:focus,select:focus,textarea:focus { outline:none;border-color:var(--primar
   <div id="meigi-list"></div>
 </div>
 
+<!-- 買いQR -->
+<div id="page-buyqr" class="page">
+  <h2>買いQR</h2>
+  <div id="buyqr-list"></div>
+</div>
+
 <!-- 会場管理 -->
 <div id="page-venue" class="page">
   <div class="toolbar">
@@ -192,12 +199,6 @@ input:focus,select:focus,textarea:focus { outline:none;border-color:var(--primar
       <input type="text" id="meigi-name" placeholder="例：田中さや子">
     </div>
     <div class="form-row">
-      <div class="form-group">
-        <label>担当グループ</label>
-        <input type="text" id="meigi-group" list="group-datalist" autocomplete="off"
-               placeholder="例：Travis Japan" oninput="updateMemberDatalist()">
-        <datalist id="group-datalist"></datalist>
-      </div>
       <div class="form-group">
         <label>メンバー</label>
         <input type="text" id="meigi-member" list="member-datalist" autocomplete="off"
@@ -233,10 +234,6 @@ input:focus,select:focus,textarea:focus { outline:none;border-color:var(--primar
         <label>会員有効期限</label>
         <input type="date" id="meigi-valid-until">
       </div>
-    </div>
-    <div class="form-group">
-      <label>年会費更新日</label>
-      <input type="date" id="meigi-renewal">
     </div>
 
     <!-- 個人情報（折りたたみ） -->
@@ -469,6 +466,7 @@ function showPage(name, btn) {
   if(btn) btn.classList.add('active');
   if(name==='dashboard') renderDashboard();
   if(name==='meigi')     renderMeigi();
+  if(name==='buyqr')     renderBuyQR();
   if(name==='venue')     renderVenue();
 }
 
@@ -610,8 +608,18 @@ function lastResult(m) {
   return isWin(last) ? '当選' : '落選';
 }
 
+function renderBuyQR() {
+  var list = DB.get('meigi').filter(function(m){ return (m.group||'') === '参考購入'; });
+  var today = new Date(); today.setHours(0,0,0,0);
+  if (!list.length) {
+    document.getElementById('buyqr-list').innerHTML = '<div class="empty">買いQRの名義がありません</div>';
+    return;
+  }
+  document.getElementById('buyqr-list').innerHTML = list.map(function(m){ return meigiCard(m, today); }).join('');
+}
+
 function renderMeigi() {
-  var list  = DB.get('meigi');
+  var list  = DB.get('meigi').filter(function(m){ return (m.group||'') !== '参考購入'; });
   var today = new Date(); today.setHours(0,0,0,0);
   var sort  = document.getElementById('sort-meigi').value;
   var gf    = document.getElementById('filter-group').value;
