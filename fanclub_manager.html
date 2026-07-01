@@ -231,8 +231,8 @@ input:focus,select:focus,textarea:focus { outline:none;border-color:var(--primar
         <input type="month" id="meigi-join-month">
       </div>
       <div class="form-group">
-        <label>会員有効期限</label>
-        <input type="date" id="meigi-valid-until">
+        <label>更新年月</label>
+        <input type="month" id="meigi-valid-until">
       </div>
     </div>
 
@@ -692,7 +692,8 @@ function meigiCard(m, today) {
     '</div>'+
     '<div style="margin-top:4px;font-size:12px;color:var(--muted);">'+
     (m.number?'会員番号：'+esc(padNum(m.number))+'<button onclick="event.stopPropagation();copyText(\''+esc(padNum(m.number))+'\')" style="border:none;background:none;cursor:pointer;font-size:12px;padding:0 2px;" title="コピー">📋</button>　':'')+
-    (m.renewal?'更新日：'+m.renewal:'')+
+    (m.joinMonth?'入会：'+m.joinMonth+'　':'')+
+    (m.renewal?'更新：'+(m.renewal||m.validUntil):'')+
     '</div>';
 
   // 申込中イベント
@@ -761,8 +762,7 @@ function openMeigiModal(id, preGroup, preMember) {
     document.getElementById('meigi-number').value     = padNum(m.number) || '';
     document.getElementById('meigi-password').value   = m.password     || '';
     document.getElementById('meigi-join-month').value = m.joinMonth    || '';
-    document.getElementById('meigi-valid-until').value= m.validUntil   || '';
-    document.getElementById('meigi-renewal').value    = m.renewal      || '';
+    document.getElementById('meigi-valid-until').value= m.renewal || m.validUntil || '';
     document.getElementById('meigi-realname').value   = m.realName     || '';
     document.getElementById('meigi-birthday').value   = m.birthday     || '';
     document.getElementById('meigi-email').value      = m.email        || '';
@@ -795,7 +795,7 @@ function saveMeigi() {
     password:       document.getElementById('meigi-password').value,
     joinMonth:      document.getElementById('meigi-join-month').value,
     validUntil:     document.getElementById('meigi-valid-until').value,
-    renewal:        document.getElementById('meigi-renewal').value,
+    renewal:        document.getElementById('meigi-valid-until').value,
     realName:       document.getElementById('meigi-realname').value.trim(),
     birthday:       document.getElementById('meigi-birthday').value,
     email:          document.getElementById('meigi-email').value.trim(),
