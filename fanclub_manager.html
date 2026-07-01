@@ -732,8 +732,8 @@ function quickResult(meigiId, recordId, result) {
 
 function openMeigiModal(id, preGroup, preMember) {
   // datalist更新
-  document.getElementById('group-datalist').innerHTML =
-    getGroups().map(function(g){return '<option value="'+esc(g)+'">';}).join('');
+  var gdl = document.getElementById('group-datalist');
+  if(gdl) gdl.innerHTML = getGroups().map(function(g){return '<option value="'+esc(g)+'">';}).join('');
 
   var g = preGroup || '';
   var fields = ['id','name','group','member','number','password','join-month','valid-until','renewal','fee','realname','birthday','email','phone','artist','address','note'];
